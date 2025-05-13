@@ -1,0 +1,6 @@
+# config.toml
+[server]
+port = 8501
+enableCORS = false
+enableXsrfProtection = false
+
