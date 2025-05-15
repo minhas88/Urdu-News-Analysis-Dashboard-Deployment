@@ -1,6 +1,6 @@
-# Use official Python 3.11 slim image
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies for psycopg2
@@ -14,12 +14,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy Streamlit app source
-COPY streamlit_app.py .
+# Copy FastAPI app source code
+COPY api.py .
 
-# Expose port Streamlit listens on (default 8501)
-EXPOSE 8501
+# Expose port 8000 for FastAPI
+EXPOSE 8000
 
-# Run Streamlit app
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Command to run FastAPI with uvicorn
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
 

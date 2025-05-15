@@ -1,10 +1,10 @@
 import os
 import streamlit as st
+##import sqlalchemy
 import requests
 import pandas as pd
 import plotly.express as px
 from streamlit.components.v1 import html
-
 
 st.set_page_config(
     page_title="Urdu News Dashboard",
@@ -13,7 +13,8 @@ st.set_page_config(
 )
 
 # DB connection
-FASTAPI_URL = os.getenv("FASTAPI_URL")
+##DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://affan:pass123@postgres:5432/news_db")
+FASTAPI_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000/inference")
 
 CATEGORY_MAP = {
     1: "Entertainment",
@@ -23,22 +24,33 @@ CATEGORY_MAP = {
     5: "Technology"
 }
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+# Load and cache data
+# try:
+#     engine = sqlalchemy.create_engine(DATABASE_URL)
+
+#     @st.cache_data
+#     def load_data(limit=100):
+#         query = "SELECT * FROM predictions ORDER BY id DESC LIMIT %s"
+#         return pd.read_sql(query, engine, params=(limit,))
+
+#     df = load_data()
+#     df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
+
+# except Exception as e:
+#     st.error(f"Database connection failed: {e}")
+#     df = pd.DataFrame()
+@st.cache_data
 def load_data():
     try:
-        response = requests.get(FASTAPI_URL, timeout=10)
+        response = requests.get(FASTAPI_URL)
         response.raise_for_status()
         return pd.DataFrame(response.json())
-    except requests.exceptions.RequestException as e:
-        st.error(f"🚨 Failed to fetch data from FastAPI: {str(e)}")
-        return pd.DataFrame()
     except Exception as e:
-        st.error(f"🚨 Unexpected error: {str(e)}")
+        st.error(f"Failed to fetch data from FastAPI: {e}")
         return pd.DataFrame()
-
+    
 df = load_data()
-if not df.empty:
-    df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
+df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
 
 
 # Sidebar
