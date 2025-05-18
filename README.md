@@ -1,147 +1,119 @@
-# 📰 Urdu News Classification Pipeline
+# 📰 Urdu News Classification Dashboard
 
-A fully containerized ETL + ML + Dashboard pipeline to scrape Urdu news articles, clean them, classify them using an ML model, and visualize predictions with a live dashboard. The project uses Apache Airflow for orchestration, BeautifulSoup and Requests for scraping, UrduHack for text preprocessing, Scikit-learn and TensorFlow for classification, MLflow for experiment tracking, FastAPI for serving predictions, PostgreSQL for data storage, and Streamlit with Plotly for interactive visualization. All components run seamlessly inside Docker containers managed with Docker Compose.
+A streamlined ETL + ML + Dashboard pipeline for Urdu news classification. It scrapes Urdu-language news articles from Pakistani media, cleans the text using NLP (Stanza), classifies them using a logistic regression model with TF-IDF features, and visualizes results with an interactive Streamlit dashboard.
+
+Deployed serverlessly on [Railway](https://railway.app/) using Nixpacks — no Docker needed.
 
 ---
 
 ## 🚀 Architecture Overview
 
 ```
-Airflow DAG (scraper → cleaner → model trainer → streamlit restart)
-      |
-      v
-🗃️ PostgreSQL (stores raw, cleaned, and predicted data)
-      |
-      +--> ⚡ FastAPI (serves ML predictions via /cleaned-news and /inference)
-      |
-      +--> 📊 Streamlit (visualizes predictions and sentiment trends)
-      +--> 📈 MLflow (logs model parameters, metrics, and artifacts)
+Scraper (news) ──► Cleaner (Stanza) ──► Model (TF-IDF + LogisticRegression)
+       │
+       ▼
+PostgreSQL DB
+   ├── labeled_articles
+   ├── cleaned_articles
+   └── predictions
+       ▲
+       │
+FastAPI (inference API) ◄── Streamlit (dashboard UI)
 ```
 
 ---
 
 ## 📦 Tech Stack
 
-| Component     | Tech                     |
-|---------------|--------------------------|
-| Scraper/ETL   | Apache Airflow + Python  |
-| Data Storage  | PostgreSQL (via Docker)  |
-| Model Serving | FastAPI + MLflow         |
-| Visualization | Streamlit + Plotly       |
-| Orchestration | Docker Compose           |
+| Component     | Technology             |
+|---------------|------------------------|
+| Scraping      | BeautifulSoup + Requests |
+| NLP Preproc   | Stanza (Urdu) + Stopwords |
+| Model         | TF-IDF + LogisticRegression |
+| Serving       | FastAPI                 |
+| Visualization | Streamlit + Plotly     |
+| Storage       | PostgreSQL (managed by Railway) |
+| Infra         | Railway + Nixpacks     |
 
 ---
 
-## 🛠️ Getting Started
+## 🛠️ Getting Started (Locally)
 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/urdu-news-classification-pipeline.git
-cd urdu-news-classification-pipeline
+git clone https://github.com/your-username/Urdu-News-Analysis-Dashboard-Deployment.git
+cd Urdu-News-Analysis-Dashboard-Deployment
 ```
 
-### 2. Set execution permission on required files
+### 2. Set up Python environment and install dependencies
 
 ```bash
-chmod +x wait-for-postgres.sh
+pip install -r requirements.txt
 ```
 
-### 3. Create external Docker network (only once)
+### 3. Set environment variables
 
-```bash
-docker network create --driver bridge scraper_network
+Create a `.env` file with your Railway PostgreSQL credentials:
+
+```env
+POSTGRES_DB=railway
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password_here
+POSTGRES_HOST=postgres.railway.internal
+POSTGRES_PORT=5432
 ```
 
-### 4. Build and run all services
-
-```bash
-docker-compose up --build
-```
-
-### 5. Access Services
-
-- Airflow UI → [http://localhost:8080](http://localhost:8080) (default: admin/admin)
-- FastAPI → [http://localhost:8000/inference](http://localhost:8000/inference)
-- Streamlit → [http://localhost:8501](http://localhost:8501)
-- MLflow UI → [http://localhost:5000](http://localhost:5000)
+> 🚨 Do **not** commit `.env` to GitHub.
 
 ---
 
-## ⚙️ Manual Airflow Usage
+## 🔃 Pipeline Usage
 
-### Trigger a DAG run manually:
-- Go to Airflow UI → DAGs → `scrape_labeled_articles`
-- Click ▶️ to trigger manually
+```bash
+# Step 1: Ensure PostgreSQL is running (Railway or local)
+# Step 2: Run everything through the orchestration script
+bash start.sh
+```
+
+`start.sh` performs:
+- DB readiness check
+- Web scraping from 4 news sites
+- Urdu text cleaning
+- Model training and evaluation
+- Starts FastAPI on port 8000 and Streamlit on port 8080
 
 ---
 
-## 🧰 Common Fixes
+## 🌐 Accessing Services (During Local Dev)
 
-### 🧪 MLflow Folder Permission Issue
-If MLflow UI shows "no runs logged" but logs show tracking succeeded, fix volume permissions:
-```bash
-sudo rm -rf mlruns
-mkdir mlruns
-sudo chown -R $USER:$USER mlruns
-```
-
-### 🔐 Docker Socket Permissions
-If you see `Permission denied` when Airflow tries to use DockerOperator:
-```bash
-sudo usermod -aG docker $USER
-newgrp docker
-sudo chmod 666 /var/run/docker.sock
-```
-
-### 📁 Airflow Log Permissions
-If Airflow cannot write logs:
-```bash
-sudo rm -rf ./airflow/logs && mkdir -p ./airflow/logs
-sudo chown -R 50000:0 ./airflow/logs
-```
+| Service    | URL                     |
+|------------|--------------------------|
+| FastAPI    | http://localhost:8000/inference |
+| Streamlit  | http://localhost:8080    |
 
 ---
 
-## 📁 Directory Structure
+## 📁 Folder Structure
 
 ```
 .
-├── airflow/
-│   ├── dags/
-│   │   └── scrape_dag.py
-│   └── logs/               # Airflow logs auto-generated
-├── docker-compose.yml      # Service definitions
-├── Dockerfile.*            # Docker build files for each service
-├── fastAPI/
-│   └── api.py              # FastAPI app
-├── init/
-│   └── postgres-init.sql   # PostgreSQL schema init
-├── ml_model/
-│   └── train_model.py      # ML training and prediction
-├── mlruns/                 # MLflow experiment logs and models
-├── scraper/
-│   ├── scrapper.py         # News scraping logic
-│   ├── cleaner.py          # Text normalization and preprocessing
-│   └── stopwords-ur.txt    # Urdu stopword list
-├── streamlit/
-│   └── streamlit_app.py    # Streamlit dashboard
-├── wait-for-postgres.sh    # Readiness check for Postgres
-├── requirements.*.txt      # Service-specific dependencies
+├── app/
+│   ├── api.py              # FastAPI app
+│   ├── cleaner.py          # Text preprocessing (stanza + stopwords)
+│   ├── scrapper.py         # Scrapes Urdu news articles
+│   ├── streamlit_app.py    # Streamlit dashboard
+│   ├── train_model.py      # ML pipeline (TF-IDF + LogisticRegression)
+│   ├── stopwords-ur.txt    # Urdu stopword list
+│   └── wait-for-postgres.sh # DB readiness script
+├── postgres-init.sql       # Optional schema bootstrap
+├── requirements.txt        # Python dependencies
+├── start.sh                # Run scraper → clean → train → launch
 └── README.md
 ```
 
 ---
 
-## 🧠 Contributors
-
-* **Affan** – Streamlit dashboard & PostgreSQL integration
-* **Mudasser** – Airflow ETL & news scraping
-* **Usama** – ML model pipeline & FastAPI integration
-
----
-
 ## 📜 License
 
-MIT License – Use, modify, and distribute freely.
-
+MIT License – Free for personal and commercial use.
