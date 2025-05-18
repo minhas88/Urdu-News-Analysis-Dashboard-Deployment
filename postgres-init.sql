@@ -1,10 +1,4 @@
-CREATE DATABASE news_db;
-CREATE DATABASE airflow_db;
-
-GRANT ALL PRIVILEGES ON DATABASE news_db TO affan;
-GRANT ALL PRIVILEGES ON DATABASE airflow_db TO affan;
-
-\connect news_db
+-- Create tables directly:
 CREATE TABLE IF NOT EXISTS labeled_articles (
     title TEXT,
     content TEXT,
@@ -12,9 +6,7 @@ CREATE TABLE IF NOT EXISTS labeled_articles (
     source TEXT,
     timestamp TIMESTAMP
 );
-GRANT ALL PRIVILEGES ON labeled_articles TO affan;
 
--- Table for cleaned and preprocessed articles
 CREATE TABLE IF NOT EXISTS cleaned_articles (
     id SERIAL PRIMARY KEY,
     title TEXT,
@@ -24,7 +16,6 @@ CREATE TABLE IF NOT EXISTS cleaned_articles (
     timestamp TIMESTAMP
 );
 
--- Table for model predictions
 CREATE TABLE IF NOT EXISTS predictions (
     id SERIAL PRIMARY KEY,
     title TEXT,
@@ -32,5 +23,3 @@ CREATE TABLE IF NOT EXISTS predictions (
     predicted_label TEXT,
     predicted_sentiment TEXT
 );
-
-

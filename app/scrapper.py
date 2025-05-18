@@ -3,6 +3,7 @@ import time
 import requests
 import psycopg2
 import pandas as pd
+import os
 from bs4 import BeautifulSoup
 from datetime import datetime
 
@@ -17,11 +18,11 @@ class NewsScraper:
         self.session.mount('https://', adapter)
 
         self.conn = psycopg2.connect(
-            dbname="news_db",
-            user="affan",
-            password="pass123",
-            host="postgres",
-            port="5432"
+            dbname=os.getenv("POSTGRES_DB", "news_db"),
+            user=os.getenv("POSTGRES_USER", "affan"),
+            password=os.getenv("POSTGRES_PASSWORD", "pass123"),
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=os.getenv("POSTGRES_PORT", "5432")
         )
         self.cursor = self.conn.cursor()
 
@@ -40,8 +41,6 @@ class NewsScraper:
         except Exception as e:
             print(f"[DB ERROR] {e}")
 
-
-    # EXPRESS
     def get_express_articles(self, max_pages=1):
         base_url = 'https://www.express.pk'
         categories = ['saqafat', 'business', 'sports', 'science', 'world']
@@ -72,7 +71,6 @@ class NewsScraper:
                 except Exception as e:
                     print(f"[EXPRESS FAIL] {e}")
 
-    # JANG
     def get_jang_articles(self, max_pages=1):
         base_url = 'https://jang.com.pk'
         categories = ['entertainment', 'sports', 'international', 'business', 'science']
@@ -105,11 +103,9 @@ class NewsScraper:
                 except Exception as e:
                     print(f"[JANG FAIL] {e}")
 
-    # DUNYA
     def get_dunya_articles(self, max_pages=1):
         base_url = 'https://urdu.dunyanews.tv'
         categories = ['entertainment', 'sports', 'international', 'business', 'technology']
-        unwanted = ['health', 'fakenews', 'pakistan', 'weirdnews']
         for category in categories:
             for page in range(1, max_pages + 1):
                 print(f"[DUNYA] Page {page} - {category}")
@@ -126,7 +122,7 @@ class NewsScraper:
                                 continue
                             relative_link = a_tag['href']
                             article_url = f"{base_url}{relative_link}"
-                            if article_url in self.seen_links or any(uw in article_url for uw in unwanted):
+                            if article_url in self.seen_links:
                                 continue
                             article_response = self.session.get(article_url)
                             soup2 = BeautifulSoup(article_response.text, 'html.parser')
@@ -141,7 +137,6 @@ class NewsScraper:
                 except Exception as e:
                     print(f"[DUNYA FAIL] {e}")
 
-    # SAMAA
     def get_samaa_articles(self, max_pages=1):
         base_url = 'https://urdu.samaa.tv'
         categories = {
@@ -182,50 +177,6 @@ class NewsScraper:
                 except Exception as e:
                     print(f"[SAMAA FAIL] {e}")
 
-    # def scrape_all(self, max_pages=1):
-    #     print("[STARTING LABELED SCRAPE]")
-    #     self.get_express_articles(max_pages)
-    #     self.get_jang_articles(max_pages)
-    #     self.get_dunya_articles(max_pages)
-    #     self.get_samaa_articles(max_pages)
-    #     print("[SCRAPING COMPLETE]")
-
-    #     print("[LOADING RAW DATA]")
-    #     df = pd.read_sql("SELECT * FROM labeled_articles;", self.conn)
-
-    #     print("[CLEANING DATA]")
-    #     df['gold_label'] = df['gold_label'].str.lower().map(category_mapping)
-    #     df.dropna(subset=['content', 'gold_label'], inplace=True)
-    #     df['content'] = df['content'].apply(clean_text)
-    #     df['title'] = df['title'].apply(clean_text)
-    #     df['label'] = pd.Categorical(
-    #         df['gold_label'],
-    #         categories=['entertainment', 'business', 'sports', 'science-technology', 'international'],
-    #         ordered=True
-    #     ).codes + 1
-    #     df.drop(columns=['gold_label'], inplace=True)
-
-    #     print("[INSERTING CLEANED DATA]")
-    #     self.cursor.execute("""
-    #         CREATE TABLE IF NOT EXISTS cleaned_articles (
-    #             title TEXT,
-    #             content TEXT,
-    #             label INT,
-    #             source TEXT,
-    #             timestamp TIMESTAMP
-    #         );
-    #     """)
-    #     for _, row in df.iterrows():
-    #         self.cursor.execute("""
-    #             INSERT INTO cleaned_articles (title, content, label, source, timestamp)
-    #             VALUES (%s, %s, %s, %s, %s);
-    #         """, (row['title'], row['content'], int(row['label']), row['source'], row['timestamp']))
-    #     self.conn.commit()
-
-    #     self.cursor.close()
-    #     self.conn.close()
-    #     print("[PIPELINE COMPLETE]")
-
     def scrape_all(self, max_pages=1):
         print("[STARTING LABELED SCRAPE]")
         self.get_express_articles(max_pages)
@@ -233,8 +184,6 @@ class NewsScraper:
         self.get_dunya_articles(max_pages)
         self.get_samaa_articles(max_pages)
         print("[SCRAPING COMPLETE]")
-        
-        # Close DB connection after scraping
         self.cursor.close()
         self.conn.close()
 

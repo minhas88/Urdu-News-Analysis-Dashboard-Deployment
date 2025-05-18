@@ -1,11 +1,10 @@
 import pandas as pd
 import psycopg2
 import stanza
+import os
 
-# Initialize Stanza pipeline for Urdu
 nlp = stanza.Pipeline(lang='ur', processors='tokenize,mwt,pos,lemma')
 
-# Category mapping for standardization
 category_mapping = {
     'entertainment': 'entertainment',
     'business': 'business',
@@ -17,13 +16,11 @@ category_mapping = {
     'international': 'international'
 }
 
-# Load Urdu stopwords from file
-stopwords_file = "stopwords-ur.txt"
+stopwords_file = "app/stopwords-ur.txt"
 with open(stopwords_file, 'r', encoding='utf-8') as f:
     stop_words = set(f.read().splitlines())
 
 def remove_stopwords(text):
-    """Remove stopwords from a string."""
     if not isinstance(text, str):
         return text
     tokens = text.split()
@@ -31,35 +28,24 @@ def remove_stopwords(text):
     return " ".join(filtered)
 
 def urdu_preprocess(text):
-    """Preprocess text using Stanza NLP pipeline."""
     if not isinstance(text, str):
         return text
-    
-    # Process text with Stanza pipeline
     doc = nlp(text)
-
-    # Tokenize and lemmatize
     lemmatized_text = ' '.join([word.lemma for sent in doc.sentences for word in sent.words])
-
-    # Remove stopwords
-    lemmatized_text = remove_stopwords(lemmatized_text)
-
-    return lemmatized_text
+    return remove_stopwords(lemmatized_text)
 
 class DataCleaner:
     def __init__(self):
-        """Initialize database connection and cursor."""
         self.conn = psycopg2.connect(
-            dbname="news_db",
-            user="affan",
-            password="pass123",
-            host="postgres",
-            port="5432"
+            dbname=os.getenv("POSTGRES_DB", "news_db"),
+            user=os.getenv("POSTGRES_USER", "affan"),
+            password=os.getenv("POSTGRES_PASSWORD", "pass123"),
+            host=os.getenv("POSTGRES_HOST", "localhost"),
+            port=os.getenv("POSTGRES_PORT", "5432")
         )
         self.cursor = self.conn.cursor()
 
     def clean_data(self):
-        """Load and clean the data from the database."""
         print("[LOADING RAW DATA]")
         df = pd.read_sql("SELECT * FROM labeled_articles;", self.conn)
         print(f"[DATA LOADED] Rows: {len(df)}")

@@ -6,10 +6,10 @@ import os
 app = FastAPI()
 
 # Load environment variables
-DB_NAME = os.getenv("POSTGRES_DB", "news_db")
-DB_USER = os.getenv("POSTGRES_USER", "affan")
-DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pass123")
-DB_HOST = os.getenv("POSTGRES_HOST", "postgres")
+DB_NAME = os.getenv("POSTGRES_DB")
+DB_USER = os.getenv("POSTGRES_USER")
+DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+DB_HOST = os.getenv("POSTGRES_HOST")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 
 def get_connection():
@@ -34,4 +34,3 @@ def get_predictions():
     df = pd.read_sql("SELECT * FROM predictions ORDER BY RANDOM() LIMIT 100;", conn)
     conn.close()
     return df.to_dict(orient="records")
-

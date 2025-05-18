@@ -1,16 +1,22 @@
 #!/bin/bash
-# Make sure PostgreSQL is ready
+
+# Wait for DB
 echo "⏳ Waiting for DB..."
 bash app/wait-for-postgres.sh
 
-# Optional: run scraper and training once
-echo "🚀 Running scraper and cleaner..."
+# Run scraping and training
+echo "🚀 Scraping + Cleaning..."
 python3 app/scrapper.py
 python3 app/cleaner.py
 
-echo "🧠 Running ML model training..."
+echo "🧠 Training model..."
 python3 app/train_model.py
 
-# Launch Streamlit app
-echo "🌐 Starting Streamlit app..."
-streamlit run app/streamlit_app.py --server.port=8000 --server.address=0.0.0.0
+# Run FastAPI in background
+echo "🚀 Starting FastAPI (background)..."
+uvicorn app.api:app --host 0.0.0.0 --port 8000 &
+
+# Start Streamlit frontend (port 8080 will be exposed)
+echo "🌐 Starting Streamlit (public)..."
+streamlit run app/streamlit_app.py --server.port=8080 --server.address=0.0.0.0
+

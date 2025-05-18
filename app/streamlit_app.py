@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-##import sqlalchemy
 import requests
 import pandas as pd
 import plotly.express as px
@@ -12,9 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# DB connection
-##DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://affan:pass123@postgres:5432/news_db")
-FASTAPI_URL = os.getenv("FASTAPI_URL", "http://fastapi:8000/inference")
+FASTAPI_URL = os.getenv("FASTAPI_URL", "http://localhost:8000/inference")
 
 CATEGORY_MAP = {
     1: "Entertainment",
@@ -24,21 +21,6 @@ CATEGORY_MAP = {
     5: "Technology"
 }
 
-# Load and cache data
-# try:
-#     engine = sqlalchemy.create_engine(DATABASE_URL)
-
-#     @st.cache_data
-#     def load_data(limit=100):
-#         query = "SELECT * FROM predictions ORDER BY id DESC LIMIT %s"
-#         return pd.read_sql(query, engine, params=(limit,))
-
-#     df = load_data()
-#     df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
-
-# except Exception as e:
-#     st.error(f"Database connection failed: {e}")
-#     df = pd.DataFrame()
 @st.cache_data
 def load_data():
     try:
@@ -46,12 +28,19 @@ def load_data():
         response.raise_for_status()
         return pd.DataFrame(response.json())
     except Exception as e:
-        st.error(f"Failed to fetch data from FastAPI: {e}")
+        st.error(f"❌ Failed to fetch data from FastAPI: {e}")
         return pd.DataFrame()
-    
-df = load_data()
-df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
 
+df = load_data()
+
+# Column safety
+if not df.empty and "predicted_label" in df.columns:
+    df["category"] = df["predicted_label"].astype(int).map(CATEGORY_MAP)
+else:
+    df["category"] = "Unknown"
+
+if "predicted_sentiment" not in df.columns:
+    df["predicted_sentiment"] = "Unknown"
 
 # Sidebar
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/21/21601.png", width=70)
@@ -60,7 +49,6 @@ st.sidebar.header("🧭 Filter Options")
 if not df.empty:
     categories = st.sidebar.multiselect("Select Categories", df["category"].unique(), default=df["category"].unique())
     sentiments = st.sidebar.multiselect("Select Sentiments", df["predicted_sentiment"].unique(), default=df["predicted_sentiment"].unique())
-
     filtered_df = df[
         (df["category"].isin(categories)) &
         (df["predicted_sentiment"].isin(sentiments))
@@ -70,11 +58,10 @@ else:
     filtered_df = df
     st.sidebar.warning("No data available for filtering.")
 
-# Live ticker
+# Marquee ticker
 if not df.empty:
     ticker_df = df.sample(n=min(20, len(df)))
     ticker_text = " • ".join([f"{row['title']}" for _, row in ticker_df.iterrows()])
-
     html(f"""
         <div style="background-color:#111; padding:15px;">
             <marquee direction="left" scrollamount="3" style="color:#fff; font-size:22px; font-weight:bold;">
@@ -90,7 +77,7 @@ st.markdown("""
     <hr style='border:1px solid #666;'>
 """, unsafe_allow_html=True)
 
-# Layout: Articles and Summary
+# Main Layout
 col1, col2 = st.columns([2, 1], gap="large")
 
 with col1:
@@ -116,7 +103,7 @@ with col2:
     st.subheader("📋 Summary")
     if not filtered_df.empty:
         st.metric("Total Articles", len(filtered_df))
-        
+
         st.markdown("**Category Breakdown:**")
         cat_df = pd.DataFrame(filtered_df["category"].value_counts()).reset_index()
         cat_df.columns = ["Category", "Count"]
@@ -126,7 +113,6 @@ with col2:
         sent_df = pd.DataFrame(filtered_df["predicted_sentiment"].value_counts()).reset_index()
         sent_df.columns = ["Sentiment", "Count"]
         st.dataframe(sent_df, hide_index=True)
-
     else:
         st.info("No summary data.")
 
@@ -163,3 +149,4 @@ if not filtered_df.empty:
     st.plotly_chart(fig_grouped, use_container_width=True)
 else:
     st.info("No sentiment-category data available.")
+
